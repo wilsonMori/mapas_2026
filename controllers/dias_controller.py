@@ -55,7 +55,7 @@ class DiasController:
             return
 
         resumen = (
-            self.data['Dia']
+            self.data['Dia'].astype(int)
             .value_counts()
             .sort_index()
             .reset_index()
