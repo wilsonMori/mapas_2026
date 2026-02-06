@@ -9,8 +9,5 @@ numpy==1.26.4
 matplotlib==3.9.2
 geopy==2.4.1
 
-tzdata==2025.3
-urllib3==2.6.2
-watchdog==5.0.3
-xyzservices==2025.11.0
+
 
