@@ -29,6 +29,10 @@ def aplicar_algoritmo(df, algoritmo, n_clusters, columna="Dia"):
         cantidades = [len(df)//n_clusters] * n_clusters
         df = asignar_por_kmeans(df, cantidades)
 
+    # 👉 Ajuste: convertir días de 0–(n-1) a 1–n 
+    if "Dia" in df.columns: 
+        df["Dia"] = df["Dia"].astype(int) + 1
+
     # 👉 Si la columna destino no es 'Dia', copiar resultado
     if columna != "Dia":
         df[columna] = df["Dia"]
@@ -191,92 +195,6 @@ def asignar_sweep(df, n_dias, esquina="NO"):
         usados.update(seleccionados.index)
 
     return df
-
-
-def asignacion_manual(df, cantidades, n_sectores=None):
-    """
-    Asigna puntos por sectores verticales compactos y centrados, evitando dispersión.
-
-    Parámetros:
-    - df: DataFrame con columnas Latitud y Longitud
-    - cantidades: lista con la cantidad esperada por día
-    - n_sectores: número de sectores verticales (por defecto igual al número de días)
-
-    Retorna:
-    - DataFrame con columna 'Dia' asignada, sin puntos en -1
-    """
-    df = df.copy()
-    df["Dia"] = -1
-    usados = set()
-
-    if n_sectores is None:
-        n_sectores = len(cantidades)
-
-    min_lon, max_lon = df["Longitud"].min(), df["Longitud"].max()
-    cortes = np.linspace(min_lon, max_lon, n_sectores + 1)
-
-    dia = 0
-    for i in range(n_sectores):
-        if dia >= len(cantidades):
-            break
-
-        sector = df[
-            (df["Longitud"] >= cortes[i]) & (df["Longitud"] < cortes[i + 1]) & (~df.index.isin(usados))
-        ]
-
-        if sector.empty:
-            continue
-
-        # 👉 Calcular centroide del sector
-        centro_lat = sector["Latitud"].mean()
-        centro_lon = sector["Longitud"].mean()
-
-        # 👉 Calcular distancia al centroide
-        sector["distancia"] = np.sqrt(
-            (sector["Latitud"] - centro_lat) ** 2 + (sector["Longitud"] - centro_lon) ** 2
-        )
-
-        # 👉 Seleccionar puntos más cercanos
-        seleccionados = sector.sort_values(by="distancia").head(cantidades[dia])
-        df.loc[seleccionados.index, "Dia"] = dia
-        usados.update(seleccionados.index)
-        dia += 1
-
-    df.drop(columns=["distancia"], errors="ignore", inplace=True)
-
-    # 👉 Redistribuir puntos no asignados
-    df = redistribuir_sobrantes(df, cantidades)
-
-    df["Dia"] = df["Dia"].astype(int)
-    return df
-
-def redistribuir_sobrantes(df, cantidades):
-    """
-    Redistribuye puntos no asignados (Dia = -1) a días con espacio disponible.
-
-    Parámetros:
-    - df: DataFrame con columna 'Dia'
-    - cantidades: lista con la cantidad esperada por día
-
-    Retorna:
-    - DataFrame con todos los puntos asignados
-    """
-    df = df.copy()
-    no_asignados = df[df["Dia"] == -1]
-    asignados = df[df["Dia"] != -1]
-
-    conteo_actual = asignados["Dia"].value_counts().to_dict()
-
-    for dia, esperado in enumerate(cantidades):
-        faltan = esperado - conteo_actual.get(dia, 0)
-        if faltan > 0 and not no_asignados.empty:
-            nuevos = no_asignados.head(faltan)
-            df.loc[nuevos.index, "Dia"] = dia
-            no_asignados = no_asignados.drop(nuevos.index)
-
-    df["Dia"] = df["Dia"].astype(int)
-    return df
-#
 from sklearn.cluster import KMeans
 import numpy as np
 import pandas as pd
@@ -306,7 +224,6 @@ def asignar_por_kmeans(df, cantidades, max_iter=100):
     # 👉 Redistribuir sobrantes
     df = redistribuir_sobrantes(df, cantidades)
     return df
-
 
 def redistribuir_sobrantes(df, cantidades):
     df = df.copy()
