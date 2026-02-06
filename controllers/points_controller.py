@@ -52,6 +52,8 @@ class PointsController:
                         st.session_state["df"] = aplicar_algoritmo(
                             st.session_state["df"], algoritmo, n_dias, columna="Dia"
                         )
+                        # Ajuste visual: mostrar días desde 1
+                        st.session_state["df"]["Dia"] = st.session_state["df"]["Dia"].astype(int) + 1
                         st.success(f"✅ Asignación aplicada con algoritmo {algoritmo}")
                         st.session_state["algoritmo_aplicado"] = True
 
@@ -81,7 +83,7 @@ class PointsController:
 
                 # Normalización y resumen
                 if "Dia" in st.session_state["df"].columns:
-                    st.session_state["df"]["Dia"] = st.session_state["df"]["Dia"].astype(int)
+                    st.session_state["df"]["Dia"] = st.session_state["df"]["Dia"].astype(int) + 1
 
                 dias_ctrl.data = st.session_state["df"]
 
@@ -119,10 +121,12 @@ class PointsController:
 
                 if geom:
                     coords_poly = geom["coordinates"][0]
+                    # 🔧 Normalización de coordenadas a floats (lon, lat)
+                    coords_poly = [(float(x), float(y)) for x, y in coords_poly]
                     polygon = Polygon(coords_poly)
 
                     seleccionados = st.session_state["df"][st.session_state["df"].apply(
-                        lambda r: polygon.contains(Point(r['Longitud'], r['Latitud'])), axis=1
+                        lambda r: polygon.contains(Point(float(r['Longitud']), float(r['Latitud']))), axis=1
                     )]
 
                     # Mensaje inmediato al cerrar polígono
@@ -133,7 +137,7 @@ class PointsController:
                     if len(seleccionados) > 0:
                         dia_manual = st.number_input(
                             "Asignar estos puntos al día:",
-                            min_value=0, max_value=n_dias-1, step=1,
+                            min_value=1, max_value=n_dias, step=1,
                             key=f"dia_manual_{len(seleccionados)}"
                         )
 
